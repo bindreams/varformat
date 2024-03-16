@@ -15,11 +15,23 @@ import re
 import io
 from typing import Iterable, TypeAlias, Any
 
-Location: TypeAlias = tuple[int, int]
-References: TypeAlias = dict[str, list[Location]]
-Replacements: TypeAlias = list[Location, str, Any]
+__all__ = [
+    "AmbiguityError",
+    "format",
+    "vformat",
+    "parse"
+]
 
+# Exceptions ===========================================================================================================
 class AmbiguityError(ValueError):
+    """This exception is raised when either:
+    1. Parsing a string is ambiguous, i.e. has more than one valid parsing
+    2. Formatting a string would produce a result that could not be unambiguously parsed later.
+
+    An example of an ambiguous parsing would be `parse("${A} ${B}", "1 2 3")`, with two possible results:
+    1. `A: "1", B: "2 3"`
+    2. `A: "1 2", B: "3"`
+    """
     def __init__(self, message, possibilities: Iterable[dict]):
         compiled_message = io.StringIO()
         compiled_message.write(message)
@@ -33,12 +45,34 @@ class AmbiguityError(ValueError):
         super().__init__(compiled_message.getvalue())
 
 
-re_variable = re.compile(r"\${(\w+)}")
-def _references(fmtstring: str) -> References:
-    """Produce a map {var_name: [location, ...]} for a format string."""
+# Internals ============================================================================================================
+_Location: TypeAlias = tuple[int, int]
+"""A pair of indexes (begin, past-the-end) that specify a substring."""
+
+_References: TypeAlias = dict[str, list[_Location]]
+"""A mapping of variable names to a list of locations where these variable names should be replaced with values.
+Example:
+"${A}-${B}-${A}" has references:
+    "A": [(0, 4), (10, 14)],
+    "B": [(5, 9)]
+"""
+
+_Replacement: TypeAlias = tuple[_Location, str, Any]
+"""All info needed for a single replacement:
+1. Location of the text to be replaced (i.e. the substring "${VAR}")
+2. Variable name (for error messages, etc.)
+3. Replacement object (a string or something printable)
+"""
+
+
+_re_variable = re.compile(r"\${(\w+)}")
+def _references(fmtstring: str) -> _References:
+    """Produce a map {var_name: [location, ...], ...} for a format string.
+    See docstring for _References for more info.
+    """
     result = {}
 
-    for reference in re.finditer(re_variable, fmtstring):
+    for reference in re.finditer(_re_variable, fmtstring):
         variable = reference[1]
         locations = result.get(variable, [])
         locations.append((reference.start(), reference.end()))
@@ -47,7 +81,10 @@ def _references(fmtstring: str) -> References:
     return result
 
 
-def _replacements(references: References, args: dict[str, Any], *, partial_ok, extra_ok):
+def _replacements(references: _References, args: dict[str, Any], *, partial_ok, extra_ok) -> list[_Replacement]:
+    """Given a list of references and arguments, produce a list of replacements, sorted by their order in the string.
+    See docstring for _Replacement for more info.
+    """
     result = []
     args = dict(args)
 
@@ -68,11 +105,13 @@ def _replacements(references: References, args: dict[str, Any], *, partial_ok, e
     return result
 
 
-def format(fmtstring: str, /, **kwargs):
-    return vformat(fmtstring, kwargs)
-
 def _ambiguity_check(lhs_name, lhs_text, rhs_name, rhs_text, intermediate, message):
     """Performs an ambiguity check during format for a pair of sequential variables.
+
+    Ambiguity checks are performed on pairs of variables that are next to each other because ambiguities arise when one
+    of the two neighboring arguments contains the entire contents of the text that is inbetween. For example, for a
+    format string `${A}-${B}`, if the replacement text for either A or B contains a dash `-`, then the resulting text
+    would contain two dashes and parsing would be ambiguous.
 
     :param lhs_name: name of the left side variable
     :param lhs_text: text of the left side variable
@@ -98,8 +137,15 @@ def _ambiguity_check(lhs_name, lhs_text, rhs_name, rhs_text, intermediate, messa
 def _format_iter(fmtstring: str, replacements: list[tuple[tuple[int, int], str, str]]):
     """Yields parts of the output string.
 
-    Yield values alternate between `str` (non-formatted text, even if empty) and tuple[str, str] (variable name and the
-    text replacement). Starts with `str` and ends with `str`.
+    Yield value types alternate between `str` (non-formatted in-between text, even if empty) and tuple[str, str]
+    (variable name and the corresponding text replacement). Starts with `str` and ends with `str`.
+
+    For a format string "Hello ${A} Goodbye ${B}" will yield:
+    - `"Hello "`
+    - `("A", ...)`
+    - `" Goodbye "`
+    - `("B", ...)`
+    - `""`
 
     If the format string is empty, will generate a single empty `str`.
     """
@@ -114,7 +160,51 @@ def _format_iter(fmtstring: str, replacements: list[tuple[tuple[int, int], str, 
     yield fmtstring[prev_end:]
 
 
+# Public Functions =====================================================================================================
+def format(fmtstring: str, /, **kwargs):
+    """Format a string, with replacements passed as keyword arguments.
+
+    `format` function is not configurable, but if you need more functionality, such as permitting partially formatted
+    results, forbidding unused arguments, or checking for ambiguous results, check out `vformat()`.
+
+    Examples:
+    ```
+    >>> format("Hello ${name}!", name="Anna")
+    'Hello Anna!'
+    >>> format("${number} * 1 = ${number}", number=5)
+    '5 * 1 = 5'
+    >>> format("${name} ${surname}", name="John", surname="Doe", age=35)  # Extra argument ignored
+    'John Doe'
+    >>> format("Where is ${Kevin}?")
+    Traceback (most recent call last):
+        ...
+    KeyError: Kevin
+
+    ```
+    """
+    return vformat(fmtstring, kwargs)
+
 def vformat(fmtstring: str, /, args: dict, *, partial_ok=False, extra_ok=True, ambiguity_check=False):
+    """Format a string, with replacements passed as a dictionary.
+
+    Unlike `format()`, this function supports additional flags that control its behavior:
+    - If `partial_ok` is set to `True`, strings are allowed to be partially formatted (default: `False`).
+    - If `extra_ok` is set to `True` (the default), extra unused arguments are allowed.
+    - If `ambiguity_check` is set to `True`, the function will fail if the result it produces could not be unambiguously
+      parsed to get the arguments back. See also `parse()`.
+
+    Examples:
+    ```
+    >>> vformat("Hello ${name}!", {"name": "Anna"})
+    'Hello Anna!'
+    >>> vformat("Partial parsing: ${A} ${B}", {"A": 1}, partial_ok=True)
+    'Partial parsing: 1 ${B}'
+    >>> vformat("No extras! ${var}", {"var": 1, "extra": 2}, extra_ok=False)
+    Traceback (most recent call last):
+        ...
+    ValueError: unused arguments: extra
+    ```
+    """
     references = _references(fmtstring)
     replacements = _replacements(references, args, partial_ok=partial_ok, extra_ok=extra_ok)
 
@@ -145,22 +235,55 @@ def vformat(fmtstring: str, /, args: dict, *, partial_ok=False, extra_ok=True, a
     return result.getvalue()
 
 
-def parse(fmtstring: str, /, string: str, *, ambiguity_check=True):
+def parse(fmtstring: str, /, string: str, *, ambiguity_check=True) -> dict[str, str] | None:
+    """Parse (aka un-format) a string and return a mapping of variable names to their values, or `None` if the string
+    did not match the pattern.
+
+    By default, parsing will raise an `AmbiguityError` if the string could be successfully parsed in multiple ways. If
+    `ambiguity_check` is set to `False`, the string will be passed using regex eager rules. For example, for a pattern
+    `${A} ${B}`, an ambiguous string `1 2 3` would be parsed as `A: "1 2", B: "3"`.
+
+    To avoid ambiguous strings, consider setting `ambiguity_check` to `True` when formatting with `vformat`.
+
+    Examples:
+    ```
+    >>> parse("Hello ${name}!", "Hello Anna!")
+    {'name': 'Anna'}
+    >>> parse("Model-${X}-${Y}", "This does not match at all...")
+    >>> parse("Model-${X}-${Y}", "Model-X1-155-91")
+    Traceback (most recent call last):
+        ...
+    AmbiguityError: parsing is ambiguous:
+      could be: {'X': 'X1-155', 'Y': '91'}
+            or: {'X': 'X1', 'Y': '155-91'}
+    >>> parse("Model-${X}-${Y}", "Model-X1-155-91", ambiguity_check=False)
+    {'X': 'X1-155', 'Y': '91'}
+
+    ```
+    """
     references = _references(fmtstring)
     args = {}
 
+    # Compose a regular expression which would parse the source string
     for name in references:
+        # Variables will be replaced by a named regex group.
+        # Named regex groups are needed because a single variable may appear multiple times and must match the same
+        # text each time.
         args[name] = f"(?P<_{name}>.*)"
 
     replacements = _replacements(references, args, partial_ok=False, extra_ok=False)
-    dissection = []  # a list of [unformatted text, variable name, unformatted text, ...]
-    regex = io.StringIO()  # A regular expressions with named capture groups in place of dollar variables
+
+    # a list of [unformatted text, variable name, unformatted text, ...] for ambiguity checking later.
+    dissection = []
+
+    # Resulting regular expression with named capture groups in place of dollar variables
+    regex = io.StringIO()
     iterator = iter(_format_iter(fmtstring, replacements))
     try:
         while True:
             intermediate = next(iterator)
             dissection.append(intermediate)
-            regex.write(re.escape(intermediate))
+            regex.write(re.escape(intermediate))  # Regex-escape intermediate text
 
             name, replacement = next(iterator)
             dissection.append(name)
@@ -170,12 +293,17 @@ def parse(fmtstring: str, /, string: str, *, ambiguity_check=True):
 
     match = re.fullmatch(regex.getvalue(), string, re.DOTALL)
     if not match:
+        # The text did not match our pattern
         return None
 
     result = {name: match[f"_{name}"] for name in references}
     if not ambiguity_check:
         return result
 
+    # Perform an ambiguity check
+    # We need an iterator over all the variables in the text, except the last one because `_ambiguity_check` takes a
+    # variable and the one after it.
+    #
     # [txt, var, txt, var, txt, var, txt, var, txt]
     #      [   ]     [   ]     [   ] <- take this range (every var name except last)
     for i in range(1, len(dissection)-3, 2):
