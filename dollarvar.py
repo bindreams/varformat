@@ -1,4 +1,4 @@
-# Copyright 2023 Andrey Zhukov
+# Copyright 2023-2024 andreasxp
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Format and parse string the dollar style `${variables}`.
+This package exposes the following functions:
+- `format()`: very similar to `str.format`. Simple formatting from keyword arguments.
+- `vformat()`: takes a dict instead of keyword arguments, and allows other options for more configuration.
+- `parse()`: un-format a formatted string and get back the arguments that were used.
+
+See docstrings for the functions for more information.
+"""
 import re
 import io
 from typing import Iterable, TypeAlias, Any
