@@ -35,11 +35,11 @@ def test_extra():
 
 def test_parse():
     assert dv.parse(">${var}<", ">1<") == {"var": "1"}
-    #assert dv.parse("${1}-${2}", "1-2") == {"1": "1", "2": "2"}
+    assert dv.parse("${1}-${2}", "1-2") == {"1": "1", "2": "2"}
 
 def test_roundtrip():
     def roundtrip(fmtstring, args):
         assert dv.parse(fmtstring, dv.vformat(fmtstring, args)) == args
 
     roundtrip("${a}-${b}-${c}", {"a": "a", "b": "b", "c": "c"})
-    #roundtrip("${1} ${2} ${3}", {"1": "1", "2": "2", "3": "3"})
+    roundtrip("${1} ${2} ${3}", {"1": "1", "2": "2", "3": "3"})

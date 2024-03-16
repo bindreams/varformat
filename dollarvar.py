@@ -150,7 +150,7 @@ def parse(fmtstring: str, /, string: str, *, ambiguity_check=True):
     args = {}
 
     for name in references:
-        args[name] = f"(?P<{name}>.*)"
+        args[name] = f"(?P<_{name}>.*)"
 
     replacements = _replacements(references, args, partial_ok=False, extra_ok=False)
     dissection = []  # a list of [unformatted text, variable name, unformatted text, ...]
@@ -172,7 +172,7 @@ def parse(fmtstring: str, /, string: str, *, ambiguity_check=True):
     if not match:
         return None
 
-    result = {name: match[name] for name in references}
+    result = {name: match[f"_{name}"] for name in references}
     if not ambiguity_check:
         return result
 
