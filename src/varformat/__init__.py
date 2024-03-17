@@ -20,8 +20,12 @@ This package exposes the following functions:
 See docstrings for the functions for more information.
 """
 import io
-from typing import Iterable, TypeAlias, Any
 import itertools
+
+try:
+    from typing import Iterable, TypeAlias, Any
+except ImportError:
+    from typing_extensions import Iterable, TypeAlias, Any
 
 import regex as re
 
