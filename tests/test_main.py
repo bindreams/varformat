@@ -1,6 +1,6 @@
 import pytest
-import dollarvar as dv
-from dollarvar.formats import posix_shell as sh, python as py
+import varformat as vf
+from varformat.formats import posix_shell as sh, python as py
 
 
 def roundtrip(engine, fmtstring, args, result):
@@ -10,47 +10,47 @@ def roundtrip(engine, fmtstring, args, result):
 
 
 def test_basic():
-    assert dv.format(">${var}<", var=1) == ">1<"
-    assert dv.format("${a}+${b}=${c}", a=1, b=2, c=3) == "1+2=3"
+    assert vf.format(">${var}<", var=1) == ">1<"
+    assert vf.format("${a}+${b}=${c}", a=1, b=2, c=3) == "1+2=3"
 
-    assert dv.format("hello world") == "hello world"
-    assert dv.format("") == ""
+    assert vf.format("hello world") == "hello world"
+    assert vf.format("") == ""
 
-    assert dv.vformat(">${var}<", {"var": 1}) == ">1<"
-    assert dv.vformat("${a}+${b}=${c}", {"a": 1, "b": 2, "c": 3}) == "1+2=3"
+    assert vf.vformat(">${var}<", {"var": 1}) == ">1<"
+    assert vf.vformat("${a}+${b}=${c}", {"a": 1, "b": 2, "c": 3}) == "1+2=3"
 
-    assert dv.vformat("hello world", {}) == "hello world"
-    assert dv.vformat("", {}) == ""
+    assert vf.vformat("hello world", {}) == "hello world"
+    assert vf.vformat("", {}) == ""
 
 
 def test_missing():
     with pytest.raises(KeyError, match="missing"):
-        dv.format("${present} ${missing}", present="present")
+        vf.format("${present} ${missing}", present="present")
 
-    assert dv.vformat("${present} ${missing}", {"present": "present"}, partial_ok=True) == "present ${missing}"
+    assert vf.vformat("${present} ${missing}", {"present": "present"}, partial_ok=True) == "present ${missing}"
 
     with pytest.raises(KeyError, match="missing"):
-        dv.vformat("${present} ${missing}", {"present": "present"})
+        vf.vformat("${present} ${missing}", {"present": "present"})
 
 
 def test_extra():
-    assert dv.format("${a}+${a}=${a}", a=1, b=2, c=3) == "1+1=1"
-    assert dv.vformat("${a}+${a}=${a}", {"a": 1, "b": 2, "c": 3}) == "1+1=1"
+    assert vf.format("${a}+${a}=${a}", a=1, b=2, c=3) == "1+1=1"
+    assert vf.vformat("${a}+${a}=${a}", {"a": 1, "b": 2, "c": 3}) == "1+1=1"
 
-    assert dv.format("", x=1) == ""
-    assert dv.vformat("", {"x": 1}) == ""
+    assert vf.format("", x=1) == ""
+    assert vf.vformat("", {"x": 1}) == ""
 
     with pytest.raises(ValueError, match="unused arguments: b, c"):
-        dv.vformat("${a}", {"a": True, "b": False, "c": False}, extra_ok=False)
+        vf.vformat("${a}", {"a": True, "b": False, "c": False}, extra_ok=False)
 
 
 def test_parse():
-    assert dv.parse(">${var}<", ">1<") == {"var": "1"}
-    assert dv.parse("${a} ${b}", "1 2") == {"a": "1", "b": "2"}
+    assert vf.parse(">${var}<", ">1<") == {"var": "1"}
+    assert vf.parse("${a} ${b}", "1 2") == {"a": "1", "b": "2"}
 
 
 def test_roundtrip():
-    roundtrip(dv, "${a} ${b} ${c}", {"a": "a", "b": "b", "c": "c"}, "a b c")
+    roundtrip(vf, "${a} ${b} ${c}", {"a": "a", "b": "b", "c": "c"}, "a b c")
 
 
 def test_shell_engine():
