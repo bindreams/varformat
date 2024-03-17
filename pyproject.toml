@@ -1,8 +1,24 @@
 [project]
 name = "dollarvar"
 version = "0.1.0"
-requires-python = ">=3.11"
-dependencies = []
+requires-python = ">=3.8"
+dependencies = [
+	"regex"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+	"Topic :: Text Processing",
+	"Typing :: Typed"
+]
 
 [project.optional-dependencies]
 tests = ["pytest"]
@@ -15,3 +31,6 @@ max-line-length = 120
 minversion = "6.0"
 addopts = "--doctest-modules"
 doctest_optionflags = "IGNORE_EXCEPTION_DETAIL"
+
+[tool.black]
+line-length = 120
