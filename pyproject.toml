@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-tests = ["pytest"]
+dev = ["pytest", "pylint"]
 
 [tool.pylint.'MESSAGES CONTROL']
 disable = "missing-function-docstring, missing-module-docstring, too-many-arguments, too-many-locals"
