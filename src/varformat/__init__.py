@@ -23,9 +23,9 @@ import io
 import itertools
 
 try:
-    from typing import Iterable, TypeAlias, Any, Union, Mapping, Tuple
+    from typing import TypeAlias, Any, Union, Mapping, Tuple, List, Dict, Iterable
 except ImportError:
-    from typing_extensions import Iterable, TypeAlias, Any, Union, Mapping, Tuple
+    from typing_extensions import TypeAlias, Any, Union, Mapping, Tuple, List, Dict, Iterable
 
 import regex as re
 
@@ -61,7 +61,7 @@ class AmbiguityError(ValueError):
 _Location: TypeAlias = Tuple[int, int]
 """A pair of indexes (begin, past-the-end) that specify a substring."""
 
-_References: TypeAlias = Mapping[str, list[_Location]]
+_References: TypeAlias = Dict[str, List[_Location]]
 """A mapping of variable names to a list of locations where these variable names should be replaced with values.
 Example:
 "${A}-${B}-${A}" has references:
@@ -113,7 +113,7 @@ class FormatEngine:
 
     def _replacements(
         self, references: _References, args: Mapping[str, Any], *, partial_ok, extra_ok
-    ) -> list[_Replacement]:
+    ) -> List[_Replacement]:
         """Given a list of references and arguments, produce a list of replacements, sorted by their order in the
         string.
 
@@ -178,7 +178,7 @@ class FormatEngine:
                 ],
             )
 
-    def _format_iter(self, fmtstring: str, replacements: list[Tuple[Tuple[int, int], str, str]]):
+    def _format_iter(self, fmtstring: str, replacements: Iterable[Tuple[Tuple[int, int], str, str]]):
         """Yields parts of the output string.
 
         Yield value types alternate between `str` (non-formatted in-between text, even if empty) and Tuple[str, str]
@@ -290,7 +290,7 @@ class FormatEngine:
 
         return result.getvalue()
 
-    def parse(self, fmtstring: str, /, string: str, *, ambiguity_check=True) -> Union[Mapping[str, str], None]:
+    def parse(self, fmtstring: str, /, string: str, *, ambiguity_check=True) -> Union[Dict[str, str], None]:
         """Parse (aka un-format) a string and return a mapping of variable names to their values, or `None` if the
         string did not match the pattern.
 
