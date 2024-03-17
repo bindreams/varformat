@@ -1,7 +1,12 @@
 import pytest
 import dollarvar as dv
 
-def test_format_basic():
+def roundtrip(fmtstring, args, result):
+    actual = dv.vformat(fmtstring, args)
+    assert actual == result
+    assert dv.parse(fmtstring, actual) == args
+
+def test_basic():
     assert dv.format(">${var}<", var=1) == ">1<"
     assert dv.format("${a}+${b}=${c}", a=1, b=2, c=3) == "1+2=3"
 
@@ -9,10 +14,17 @@ def test_format_basic():
     assert dv.format("") == ""
 
     assert dv.vformat(">${var}<", {"var": 1}) == ">1<"
-    assert dv.vformat("${1}+${2}=${3}", {"1": 1, "2": 2, "3": 3}) == "1+2=3"
+    assert dv.vformat("${a}+${b}=${c}", {"a": 1, "b": 2, "c": 3}) == "1+2=3"
 
     assert dv.vformat("hello world", {}) == "hello world"
     assert dv.vformat("", {}) == ""
+
+def test_var_syntax():
+    assert dv.vformat("${a}", {"a": 1}) == "1"
+    assert dv.vformat("${A}", {"A": 1}) == "1"
+    assert dv.vformat("${1}", {"1": 1}) == "1"
+    assert dv.vformat("${var space}", {"var space": 1}) == "1"
+    assert dv.vformat("${_}", {"_": 1}) == "1"
 
 def test_missing():
     with pytest.raises(KeyError, match="missing"):
@@ -25,7 +37,7 @@ def test_missing():
 
 def test_extra():
     assert dv.format("${a}+${a}=${a}", a=1, b=2, c=3) == "1+1=1"
-    assert dv.vformat("${1}+${1}=${1}", {"1": 1, "2": 2, "3": 3}) == "1+1=1"
+    assert dv.vformat("${a}+${a}=${a}", {"a": 1, "b": 2, "c": 3}) == "1+1=1"
 
     assert dv.format("", x=1) == ""
     assert dv.vformat("", {"x": 1}) == ""
@@ -35,11 +47,7 @@ def test_extra():
 
 def test_parse():
     assert dv.parse(">${var}<", ">1<") == {"var": "1"}
-    assert dv.parse("${1}-${2}", "1-2") == {"1": "1", "2": "2"}
+    assert dv.parse("${a} ${b}", "1 2") == {"a": "1", "b": "2"}
 
 def test_roundtrip():
-    def roundtrip(fmtstring, args):
-        assert dv.parse(fmtstring, dv.vformat(fmtstring, args)) == args
-
-    roundtrip("${a}-${b}-${c}", {"a": "a", "b": "b", "c": "c"})
-    roundtrip("${1} ${2} ${3}", {"1": "1", "2": "2", "3": "3"})
+    roundtrip("${a}-${b}-${c}", {"a": "a", "b": "b", "c": "c"}, "a-b-c")

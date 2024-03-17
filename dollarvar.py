@@ -22,6 +22,7 @@ See docstrings for the functions for more information.
 import re
 import io
 from typing import Iterable, TypeAlias, Any
+import itertools
 
 __all__ = [
     "AmbiguityError",
@@ -73,7 +74,7 @@ _Replacement: TypeAlias = tuple[_Location, str, Any]
 """
 
 
-_re_variable = re.compile(r"\${(\w+)}")
+_re_variable = re.compile(r"\${([\w ]+)}")
 def _references(fmtstring: str) -> _References:
     """Produce a map {var_name: [location, ...], ...} for a format string.
     See docstring for _References for more info.
@@ -273,11 +274,11 @@ def parse(fmtstring: str, /, string: str, *, ambiguity_check=True) -> dict[str, 
     args = {}
 
     # Compose a regular expression which would parse the source string
-    for name in references:
-        # Variables will be replaced by a named regex group.
+    for name, i in zip(references, itertools.count()):
+        # Variables will be replaced by a named regex group "_N" where N is the index of the variable in references.
         # Named regex groups are needed because a single variable may appear multiple times and must match the same
         # text each time.
-        args[name] = f"(?P<_{name}>.*)"
+        args[name] = f"(?P<_{i}>.*)"
 
     replacements = _replacements(references, args, partial_ok=False, extra_ok=False)
 
@@ -304,7 +305,7 @@ def parse(fmtstring: str, /, string: str, *, ambiguity_check=True) -> dict[str, 
         # The text did not match our pattern
         return None
 
-    result = {name: match[f"_{name}"] for name in references}
+    result = {name: match[f"_{i}"] for name, i in zip(references, itertools.count())}
     if not ambiguity_check:
         return result
 
