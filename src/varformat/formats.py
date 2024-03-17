@@ -1,3 +1,4 @@
+# pylint: disable=cyclic-import
 from . import FormatEngine
 
 permissive = FormatEngine(r"\${([\w\s]+)}")

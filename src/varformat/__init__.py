@@ -25,6 +25,7 @@ import itertools
 
 import regex as re
 
+
 __all__ = ["AmbiguityError", "FormatEngine", "format", "vformat", "parse"]
 
 
@@ -73,7 +74,23 @@ _Replacement: TypeAlias = tuple[_Location, str, Any]
 
 
 class FormatEngine:
+    """An engine that supports parsing and formatting using a particular style.
+
+    `FormatEngine` provides three user-facing functions: `format`, `vformat`, and `parse`.
+
+    For most usecases, you can either use the default engine (module-level functions `format`, `vformat`, and `parse`),
+    import a special pre-packaged engine from `varformat.formats`, or create your own.
+
+    See `__init__()` docstring for more info about creating your own engine.
+    """
+
     def __init__(self, variable_regex):
+        r"""Create an instance of `FormatEngine`.
+
+        Supply a regular expression that would match your style of variable as `variable_regex`. The first group in that
+        regex should capture the name of the variable. For example, the regex `\${([\w\s]+)}` matches dollar-style
+        variables like `${var}`, and capture group 1 returns the name of the variable `var`.
+        """
         self.re_variable = re.compile(variable_regex)
 
     def _references(self, fmtstring: str) -> _References:
@@ -357,8 +374,10 @@ class FormatEngine:
         return result
 
 
+# pylint: disable=wrong-import-position
 from .formats import permissive as _default_engine
 
+# pylint: disable=redefined-builtin
 format = _default_engine.format
 vformat = _default_engine.vformat
 parse = _default_engine.parse
