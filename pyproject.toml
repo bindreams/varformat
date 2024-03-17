@@ -25,7 +25,7 @@ classifiers = [
 dev = ["pytest", "pylint"]
 
 [tool.pylint.'MESSAGES CONTROL']
-disable = "missing-function-docstring, missing-module-docstring, too-many-arguments, too-many-locals"
+disable = "missing-function-docstring, too-many-arguments, too-many-locals"
 max-line-length = 120
 
 [tool.pytest.ini_options]

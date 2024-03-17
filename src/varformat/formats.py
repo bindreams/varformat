@@ -1,3 +1,21 @@
+"""Extra variable formatters for varformat.
+
+Import a formatting engine of your choice from this module and use its member functions `format`, `vformat`, and
+`parse` in the same way you would use global function from the module.
+
+Examples:
+```
+>>> from varformat.formats import python
+>>> python.format("Hello {var}!", var="python")
+'Hello python!'
+
+>>> from varformat.formats import posix_shell as sh
+>>> sh.format("Hello ${var}!", var="bash")
+'Hello bash!'
+
+```
+"""
+
 # pylint: disable=cyclic-import
 from . import FormatEngine
 
