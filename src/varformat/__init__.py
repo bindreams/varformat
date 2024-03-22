@@ -11,13 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Format and parse string the dollar style `${variables}`.
-This package exposes the following functions:
-- `format()`: very similar to `str.format`. Simple formatting from keyword arguments.
-- `vformat()`: takes a dict instead of keyword arguments, and allows other options for more configuration.
+"""Format and parse strings with any kind of variables syntax (e.g. `{var}`, `$VAR`, etc).
+
+This package exposes the following functions (see docstrings for more information):
+- `format()`: very similar to `str.format`. Simple formatting from keyword arguments;
+- `vformat()`: takes a dict instead of keyword arguments, and allows other options for more configuration;
 - `parse()`: un-format a formatted string and get back the arguments that were used.
 
-See docstrings for the functions for more information.
+The functions above format in the default style for this package (`${var}`), but there are more format types
+available in the `varformat.formats` subpackage.
+
+Additionally, you may define your own format style that suit your use-case. For this, this package exports:
+- `RegexFormatter`: supply a regex that catches variables in the format string to format it;
+- `AbstractFormatter`: more flexible formatter with any logic you need (see docstring).
 """
 import io
 import itertools

@@ -12,7 +12,7 @@ Varformat can format and un-format (parse) strings containing various styles of 
 'Classic python braces'
 
 >>> from varformat.formats import posix_shell as sh
->>> sh.format("POSIX compliant ${style}", style="dollar variables")
+>>> sh.format("POSIX compliant $style", style="dollar variables")
 'POSIX compliant dollar variables'
 
 ```
