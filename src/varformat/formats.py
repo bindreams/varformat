@@ -17,8 +17,6 @@ Examples:
 """
 
 # pylint: disable=cyclic-import
-import itertools
-import regex as re
 from . import AbstractFormatter, RegexFormatter, _References
 
 __all__ = ["permissive", "posix_shell", "python"]
@@ -32,23 +30,15 @@ Used as a default engine in this package.
 
 
 class _PosixFormatter(AbstractFormatter):
-    re_posix_variable_braces = re.compile(r"\${([a-zA-Z_]\w*)}")
-    re_posix_variable_no_braces = re.compile(r"\$([a-zA-Z_]\w*)")
+    _formatter_braces = RegexFormatter(r"\${([a-zA-Z_]\w*)}")
+    _formatter_no_braces = RegexFormatter(r"\$([a-zA-Z_]\w*)")
 
     def _references(self, fmtstring: str) -> _References:
-        """Produce a map {var_name: [location, ...], ...} for a format string.
-        See docstring for _References for more info.
-        """
-        result = {}
+        part1 = self._formatter_braces._references(fmtstring)  # pylint: disable=protected-access
+        part2 = self._formatter_no_braces._references(fmtstring)  # pylint: disable=protected-access
 
-        for reference in itertools.chain(
-            re.finditer(self.re_posix_variable_braces, fmtstring),
-            re.finditer(self.re_posix_variable_no_braces, fmtstring),
-        ):
-            variable = reference[1]
-            locations = result.get(variable, [])
-            locations.append((reference.start(), reference.end()))
-            result[variable] = locations
+        result_keys = part1.keys() | part2.keys()
+        result = {k: part1.get(k, []) + part2.get(k, []) for k in result_keys}
 
         return result
 
