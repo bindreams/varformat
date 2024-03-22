@@ -21,6 +21,7 @@ See docstrings for the functions for more information.
 """
 import io
 import itertools
+from abc import ABCMeta, abstractmethod
 
 try:
     from typing import TypeAlias, Any, Union, Mapping, Tuple, List, Dict, Iterable
@@ -30,7 +31,7 @@ except ImportError:
 import regex as re
 
 
-__all__ = ["AmbiguityError", "FormatEngine", "format", "vformat", "parse"]
+__all__ = ["AmbiguityError", "RegexFormatter", "format", "vformat", "parse"]
 
 
 # Exceptions ===========================================================================================================
@@ -57,153 +58,44 @@ class AmbiguityError(ValueError):
         super().__init__(compiled_message.getvalue())
 
 
-# Internals ============================================================================================================
+# ======================================================================================================================
 _Location: TypeAlias = Tuple[int, int]
 """A pair of indexes (begin, past-the-end) that specify a substring."""
 
 _References: TypeAlias = Dict[str, List[_Location]]
-"""A mapping of variable names to a list of locations where these variable names should be replaced with values.
-Example:
-"${A}-${B}-${A}" has references:
-    "A": [(0, 4), (10, 14)],
-    "B": [(5, 9)]
-"""
+"""See `AbstractFormatter.references` for more info."""
 
 _Replacement: TypeAlias = Tuple[_Location, str, Any]
-"""All info needed for a single replacement:
-1. Location of the text to be replaced (i.e. the substring "${VAR}")
-2. Variable name (for error messages, etc.)
-3. Replacement object (a string or something printable)
-"""
+"""See `AbstractFormatter._replacements` for more info."""
 
 
-class FormatEngine:
-    """An engine that supports parsing and formatting using a particular style.
+class AbstractFormatter(metaclass=ABCMeta):
+    """An formatting engine that supports parsing and formatting using a particular style.
 
-    `FormatEngine` provides three user-facing functions: `format`, `vformat`, and `parse`.
+    `AbstractFormatter` provides three user-facing functions: `format`, `vformat`, and `parse`.
 
     For most usecases, you can either use the default engine (module-level functions `format`, `vformat`, and `parse`),
-    import a special pre-packaged engine from `varformat.formats`, or create your own.
+    import a special pre-packaged engine from `varformat.formats`, or create your own by subclassing this class or the
+    `RegexFormatter` implementation.
 
-    See `__init__()` docstring for more info about creating your own engine.
+    This is an abstract class. When subclassing, to make the whole thing work you need to implement the `_references`
+    method. See docstring for `_references` for more info.
     """
 
-    def __init__(self, variable_regex):
-        r"""Create an instance of `FormatEngine`.
+    # Abstract methods -------------------------------------------------------------------------------------------------
+    @abstractmethod
+    def _references(self, fmtstring) -> _References:
+        """Produce a mapping of variable names to lists of pairs of indexes, indicating which text in `fmtstring` shoud
+        be replaced by the variables' values.
 
-        Supply a regular expression that would match your style of variable as `variable_regex`. The first group in that
-        regex should capture the name of the variable. For example, the regex `\${([\w\s]+)}` matches dollar-style
-        variables like `${var}`, and capture group 1 returns the name of the variable `var`.
+        Example:
+        Format string `${A}-${B}-${A}` in the default formatter has references:
+            `{"A": [(0, 4), (10, 14)], "B": [(5, 9)]}`
+        This means that when variable `A` is replaced by value `example`, the value string will replace text at
+        positions from 0 to 4 and from 10 to 14.
         """
-        self.re_variable = re.compile(variable_regex)
 
-    def _references(self, fmtstring: str) -> _References:
-        """Produce a map {var_name: [location, ...], ...} for a format string.
-        See docstring for _References for more info.
-        """
-        result = {}
-
-        for reference in re.finditer(self.re_variable, fmtstring):
-            variable = reference[1]
-            locations = result.get(variable, [])
-            locations.append((reference.start(), reference.end()))
-            result[variable] = locations
-
-        return result
-
-    def _replacements(
-        self, references: _References, args: Mapping[str, Any], *, partial_ok, extra_ok
-    ) -> List[_Replacement]:
-        """Given a list of references and arguments, produce a list of replacements, sorted by their order in the
-        string.
-
-        See docstring for _Replacement for more info.
-        """
-        result = []
-        args = dict(args)
-
-        for name, locations in references.items():
-            try:
-                replacement = args.pop(name)
-            except KeyError:
-                if partial_ok:
-                    continue
-                raise
-
-            result.extend((location, name, replacement) for location in locations)
-
-        if not extra_ok and len(args) > 0:
-            raise ValueError(f"unused arguments: {', '.join(args.keys())}")
-
-        result.sort(key=lambda x: x[0][0])
-        return result
-
-    def _ambiguity_check(self, lhs_name, lhs_text, rhs_name, rhs_text, intermediate, message):
-        """Performs an ambiguity check during format for a pair of sequential variables.
-
-        Ambiguity checks are performed on pairs of variables that are next to each other because ambiguities arise when
-        one of the two neighboring arguments contains the entire contents of the text that is inbetween. For example,
-        for a format string `${A}-${B}`, if the replacement text for either A or B contains a dash `-`, then the
-        resulting text would contain two dashes and parsing would be ambiguous.
-
-        :param lhs_name: name of the left side variable
-        :param lhs_text: text of the left side variable
-        :param rhs_name: name of the right side variable
-        :param rhs_text: text of the right side variable
-        :param intermediate: unformatted text between variables
-        """
-        i = rhs_text.find(intermediate)
-        if i != -1:
-            raise AmbiguityError(
-                message,
-                [
-                    {lhs_name: lhs_text, rhs_name: rhs_text},
-                    {
-                        lhs_name: lhs_text + intermediate + rhs_text[:i],
-                        rhs_name: rhs_text[i + len(intermediate) :],
-                    },
-                ],
-            )
-
-        i = lhs_text.find(intermediate)
-        if i != -1:
-            raise AmbiguityError(
-                message,
-                [
-                    {lhs_name: lhs_text, rhs_name: rhs_text},
-                    {
-                        lhs_name: lhs_text[:i],
-                        rhs_name: lhs_text[i + len(intermediate) :] + intermediate + rhs_text,
-                    },
-                ],
-            )
-
-    def _format_iter(self, fmtstring: str, replacements: Iterable[Tuple[Tuple[int, int], str, str]]):
-        """Yields parts of the output string.
-
-        Yield value types alternate between `str` (non-formatted in-between text, even if empty) and Tuple[str, str]
-        (variable name and the corresponding text replacement). Starts with `str` and ends with `str`.
-
-        For a format string "Hello ${A} Goodbye ${B}" will yield:
-        - `"Hello "`
-        - `("A", ...)`
-        - `" Goodbye "`
-        - `("B", ...)`
-        - `""`
-
-        If the format string is empty, will generate a single empty `str`.
-        """
-        prev_end = 0
-
-        for location, name, replacement_val in replacements:
-            yield fmtstring[prev_end : location[0]]
-            yield (name, str(replacement_val))
-
-            prev_end = location[1]
-
-        yield fmtstring[prev_end:]
-
-    # Public Functions =================================================================================================
+    # Public methods ---------------------------------------------------------------------------------------------------
     def format(self, fmtstring: str, /, **kwargs) -> str:
         """Format a string, with replacements passed as keyword arguments.
 
@@ -268,6 +160,7 @@ class FormatEngine:
         try:
             while True:
                 intermediate = next(iterator)
+                assert isinstance(intermediate, str)
                 result.write(intermediate)
 
                 name, replacement = next(iterator)
@@ -374,6 +267,130 @@ class FormatEngine:
                 intermediate,
                 message="parsing is ambiguous:",
             )
+
+        return result
+
+    # Implementation details -------------------------------------------------------------------------------------------
+    def _replacements(
+        self, references: _References, args: Mapping[str, Any], *, partial_ok, extra_ok
+    ) -> List[_Replacement]:
+        """Given a list of references and arguments, produce a list of replacements, sorted by their order in the
+        string.
+
+        A replacement is all info needed for a single replacement of variable with value in the format string:
+        1. Location of the text to be replaced (i.e. the substring `${VAR}`)
+        2. Variable name (for error messages, etc.)
+        3. Replacement object (a string or something printable)
+        """
+        result = []
+        args = dict(args)
+
+        for name, locations in references.items():
+            try:
+                replacement = args.pop(name)
+            except KeyError:
+                if partial_ok:
+                    continue
+                raise
+
+            result.extend((location, name, replacement) for location in locations)
+
+        if not extra_ok and len(args) > 0:
+            raise ValueError(f"unused arguments: {', '.join(args.keys())}")
+
+        result.sort(key=lambda x: x[0][0])
+        return result
+
+    def _ambiguity_check(self, lhs_name, lhs_text, rhs_name, rhs_text, intermediate, message):
+        """Performs an ambiguity check during format for a pair of sequential variables.
+
+        Ambiguity checks are performed on pairs of variables that are next to each other because ambiguities arise when
+        one of the two neighboring arguments contains the entire contents of the text that is inbetween. For example,
+        for a format string `${A}-${B}`, if the replacement text for either A or B contains a dash `-`, then the
+        resulting text would contain two dashes and parsing would be ambiguous.
+
+        :param lhs_name: name of the left side variable
+        :param lhs_text: text of the left side variable
+        :param rhs_name: name of the right side variable
+        :param rhs_text: text of the right side variable
+        :param intermediate: unformatted text between variables
+        """
+        i = rhs_text.find(intermediate)
+        if i != -1:
+            raise AmbiguityError(
+                message,
+                [
+                    {lhs_name: lhs_text, rhs_name: rhs_text},
+                    {
+                        lhs_name: lhs_text + intermediate + rhs_text[:i],
+                        rhs_name: rhs_text[i + len(intermediate) :],
+                    },
+                ],
+            )
+
+        i = lhs_text.find(intermediate)
+        if i != -1:
+            raise AmbiguityError(
+                message,
+                [
+                    {lhs_name: lhs_text, rhs_name: rhs_text},
+                    {
+                        lhs_name: lhs_text[:i],
+                        rhs_name: lhs_text[i + len(intermediate) :] + intermediate + rhs_text,
+                    },
+                ],
+            )
+
+    def _format_iter(self, fmtstring: str, replacements: Iterable[Tuple[Tuple[int, int], str, str]]):
+        """Yields parts of the output string.
+
+        Yield value types alternate between `str` (non-formatted in-between text, even if empty) and Tuple[str, str]
+        (variable name and the corresponding text replacement). Starts with `str` and ends with `str`.
+
+        For a format string "Hello ${A} Goodbye ${B}" will yield:
+        - `"Hello "`
+        - `("A", ...)`
+        - `" Goodbye "`
+        - `("B", ...)`
+        - `""`
+
+        If the format string is empty, will generate a single empty `str`.
+        """
+        prev_end = 0
+
+        for location, name, replacement_val in replacements:
+            yield fmtstring[prev_end : location[0]]
+            yield (name, str(replacement_val))
+
+            prev_end = location[1]
+
+        yield fmtstring[prev_end:]
+
+
+class RegexFormatter(AbstractFormatter):
+    """An implementation of AbstractFormatter that matches variables in a format string using regular expressions.
+
+    Like `AbstractFormatter`, `RegexFormatter` provides three user-facing functions: `format`, `vformat`, and `parse`.
+    See `__init__()` docstring for more info about creating your own engine.
+    """
+
+    def __init__(self, variable_regex: str):
+        r"""Create an instance of `RegexFormatter`.
+
+        Supply a regular expression that would match your style of variable as `variable_regex`. The first group in that
+        regex should capture the name of the variable. For example, the regex `\${([\w\s]+)}` matches dollar-style
+        variables like `${var}`, and capture group 1 returns the name of the variable `var`.
+        """
+        self.re_variable = re.compile(variable_regex)
+
+    def _references(self, fmtstring: str) -> _References:
+        result = {}
+
+        for reference in re.finditer(self.re_variable, fmtstring):
+            variable = reference[1]
+            locations = result.get(variable, [])
+            locations.append((reference.start(), reference.end()))
+            result[variable] = locations
 
         return result
 

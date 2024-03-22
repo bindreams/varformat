@@ -58,6 +58,10 @@ def test_shell_engine():
     roundtrip(sh, "${A}", {"A": "a"}, "a")
     roundtrip(sh, "${_}", {"_": "a"}, "a")
 
+    roundtrip(sh, "$a", {"a": "a"}, "a")
+    roundtrip(sh, "$A", {"A": "a"}, "a")
+    roundtrip(sh, "$_", {"_": "a"}, "a")
+
     assert sh.vformat("${1}", {"1": "a"}) == "${1}"
     assert sh.vformat("${1a}", {"1": "a"}) == "${1a}"
     assert sh.vformat("${var space}", {"var space": "a"}) == "${var space}"
