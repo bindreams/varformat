@@ -25,6 +25,13 @@ Additionally, you may define your own format style that suit your use-case. For 
 - `RegexFormatter`: supply a regex that catches variables in the format string to format it;
 - `AbstractFormatter`: more flexible formatter with any logic you need (see docstring).
 """
+__all__ = ["__version__", "AmbiguityError", "AbstractFormatter", "RegexFormatter", "format", "vformat", "parse"]
+
+import importlib.metadata
+
+__version__ = importlib.metadata.version("varformat")
+
+
 import io
 import itertools
 from abc import ABCMeta, abstractmethod
@@ -35,9 +42,6 @@ except ImportError:
     from typing_extensions import TypeAlias, Any, Union, Mapping, Tuple, List, Dict, Iterable
 
 import regex as re
-
-
-__all__ = ["AmbiguityError", "RegexFormatter", "format", "vformat", "parse"]
 
 
 # Exceptions ===========================================================================================================
