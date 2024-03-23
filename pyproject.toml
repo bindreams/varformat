@@ -21,9 +21,6 @@ classifiers = [
 	"Typing :: Typed"
 ]
 
-[project.optional-dependencies]
-dev = ["pytest", "pylint"]
-
 [tool.pylint.'MESSAGES CONTROL']
 disable = "missing-function-docstring, too-many-arguments, too-many-locals"
 max-line-length = 120
