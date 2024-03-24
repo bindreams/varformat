@@ -1,0 +1,39 @@
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.5.0
+  hooks:
+    - id: check-executables-have-shebangs
+    - id: check-shebang-scripts-are-executable
+    - id: check-merge-conflict
+    - id: check-symlinks
+    - id: check-toml
+    - id: check-yaml
+    - id: destroyed-symlinks
+    - id: end-of-file-fixer
+    - id: forbid-submodules
+    - id: name-tests-test
+      args: [--pytest-test-first]
+    - id: requirements-txt-fixer
+    - id: trailing-whitespace
+      args: [--markdown-linebreak-ext=md]
+- repo: https://github.com/psf/black
+  rev: 24.3.0
+  hooks:
+    - id: black
+      args:
+        - src/varformat
+        - tests
+- repo: https://github.com/Lucas-C/pre-commit-hooks
+  rev: v1.5.5
+  hooks:
+    - id: forbid-crlf
+    - id: insert-license
+      files: >
+          (?x)^(
+            src/varformat/.*\.py|
+            tests/.*\.py|
+            scripts/.*\.py
+          )$
+      args:
+        - --license-filepath=license-header.txt
+        - --no-extra-eol
