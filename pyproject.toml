@@ -32,7 +32,12 @@ max-line-length = 120
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--doctest-modules --doctest-glob='README.md'"
+addopts = [
+    "--import-mode=importlib",
+    "--doctest-modules",
+    "--doctest-glob=README.md",
+    "--ignore-glob=scripts"
+]
 doctest_optionflags = "IGNORE_EXCEPTION_DETAIL"
 
 [tool.black]
