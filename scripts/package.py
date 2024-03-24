@@ -15,7 +15,7 @@
 """Create a python package for the current repository, as if by calling `python -m build`.
 
 Additional work performed by this script consists of determining the binady distribution's listed version. The rules are
-are described below.
+described below.
 
 Assuming the version listed in `pyproject.toml` is `1.2.3`:
 1. If the current git commit is tagged `v1.2.3`, the distribution is tagged `v1.2.3`.
@@ -24,6 +24,9 @@ Assuming the version listed in `pyproject.toml` is `1.2.3`:
 3. Otherwise, if that tag exists and points to an ancestor of the current commit, the distribution is tagged
    `v1.2.3r0.dev+{short git hash}` (a development post-release).
 4. Otherwise, if that tag exists and points to an unrelated commit, the script aborts with an error.
+
+Keep in mind that the version tag that this script produces may be (and currently is) further normalized by the build
+tool itself.
 
 Assuming the version in `pyproject.toml` follows semantic versioning rules (core version only, no suffixes like
 `-alpha`), the script will always produce a distribution with a version specifier compliant with PYPA's guidelines.
