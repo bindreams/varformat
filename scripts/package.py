@@ -18,15 +18,10 @@ Additional work performed by this script consists of determining the binary dist
 described below.
 
 Assuming the version listed in `pyproject.toml` is `1.2.3`:
-1. If the current git commit is tagged `v1.2.3`, the distribution is tagged `v1.2.3`.
-2. Otherwise, if a git tag `v1.2.3` does not exist, the distribution is tagged `v1.2.3a0.dev+{short git hash}` (an
-   alpha development pre-release).
-3. Otherwise, if that tag exists and points to an ancestor of the current commit, the distribution is tagged
-   `v1.2.3r0.dev+{short git hash}` (a development post-release).
-4. Otherwise, if that tag exists and points to an unrelated commit, the script aborts with an error.
-
-Keep in mind that the version tag that this script produces may be (and currently is) further normalized by the build
-tool itself.
+1. If git HEAD is tagged `v1.2.3`, the distribution is tagged `v1.2.3`.
+2. Otherwise, if a git tag `v1.2.3` points to a commit either that is either a child or a parent of HEAD, or does not
+   exist at all, the distribution is tagged `v1.2.3.dev0+{short git hash}` (a development release).
+3. Otherwise, if that tag exists and points to an unrelated commit, the script aborts with an error.
 
 Assuming the version in `pyproject.toml` follows semantic versioning rules (core version only, no suffixes like
 `-alpha`), the script will always produce a distribution with a version specifier compliant with PYPA's guidelines.
@@ -64,52 +59,51 @@ def main():
     repo = Repo()
 
     with open("pyproject.toml", "rb") as f:
-        project = tomllib.load(f)
+        pyproject = tomllib.load(f)
 
-    pyprojecttoml_version = project["project"]["version"]
+    pyproject_version = pyproject["project"]["version"]
     try:
-        parse_version(pyprojecttoml_version)
+        parse_version(pyproject_version)
     except ValueError:
         print(
-            f"Cannot package - version {pyprojecttoml_version} from pyproject.toml does not follow semantic "
+            f"Cannot package - version {pyproject_version} from pyproject.toml does not follow semantic "
             "versioning rules. Note that only the version core (e.g. '1.0.0', and not '1.0.0-alpha') is allowed "
             "by this script."
         )
         return 1
 
-    pyprojecttoml_version_tag_name = f"v{pyprojecttoml_version}"
+    pyproject_version_tag_name = f"v{pyproject_version}"
 
     head = repo.head.commit
 
-    if pyprojecttoml_version_tag_name in repo.tags:
+    if pyproject_version_tag_name in repo.tags:
         # There already is a git tag of this version
-        tag = repo.tags[pyprojecttoml_version_tag_name].commit
+        tag = repo.tags[pyproject_version_tag_name].commit
 
         if tag == head:
             # The tag points to current commit
-            package_version = pyprojecttoml_version
-        elif tag in head.iter_parents():
-            # The tag points to a parent of current commit, we will increment this version's major number by 1 and add
-            # an 'alpha' tag with git hash.
-            parsed = parse_version(pyprojecttoml_version)
-            package_version = f"{pyprojecttoml_version}r0.dev+{head.hexsha[:7]}"
+            package_version = pyproject_version
+        elif tag in head.iter_parents() or head in tag.iter_parents():
+            # Git tag and HEAD are related commits. It does not matter whether git tag is in front or behind, we mark
+            # the distribution as a dev release of that version.
+            package_version = f"{pyproject_version}.dev0+{head.hexsha[:7]}"
         else:
             # The tag exists but points somewhere unrelated to this commit, refuse to build.
             print(
-                f"Cannot determine version for packaging - tag with version {pyprojecttoml_version} from "
+                f"Cannot determine version for packaging - tag with version {pyproject_version} from "
                 "pyproject.toml already exists in an unrelated commit."
             )
             return 1
 
     else:
-        # There is no released tag of this version, we will use this version and add an 'alpha' tag with git hash.
-        package_version = f"{pyprojecttoml_version}a0.dev+{head.hexsha[:7]}"
+        # There is no git tag of this version, so we will mark this packages as a dev release.
+        package_version = f"{pyproject_version}.dev0+{head.hexsha[:7]}"
 
-    if package_version != pyprojecttoml_version:
+    if package_version != pyproject_version:
         # We need to overwrite the pyproject.toml file for before calling build.
         Path("pyproject.toml").replace("pyproject.toml.orig")
         try:
-            temp_project = dict(project)
+            temp_project = dict(pyproject)
             temp_project["project"]["version"] = package_version
 
             with open("pyproject.toml", "wb") as f:
