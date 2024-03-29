@@ -14,7 +14,7 @@
 # limitations under the License.
 """Create a python package for the current repository, as if by calling `python -m build`.
 
-Additional work performed by this script consists of determining the binady distribution's listed version. The rules are
+Additional work performed by this script consists of determining the binary distribution's listed version. The rules are
 described below.
 
 Assuming the version listed in `pyproject.toml` is `1.2.3`:
