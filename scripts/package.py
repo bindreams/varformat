@@ -51,7 +51,8 @@ def parse_version(version_str):
 
 
 def build():
-    shutil.rmtree("dist")
+    if Path("dist").exists():
+        shutil.rmtree("dist")
     sp.run([sys.executable, "-m", "build"], check=True)
 
 
