@@ -10,6 +10,11 @@ on:
 jobs:
   package:
     runs-on: ubuntu-latest
+    environment:
+      name: release
+      url: https://pypi.org/p/varformat
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -20,22 +25,5 @@ jobs:
         run: |
           pip install -r scripts/package-requirements.txt
           python scripts/package.py
-      - name: Save distribution as an artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: package
-          path: dist
-  publish:
-    runs-on: ubuntu-latest
-    environment:
-      name: release
-      url: https://pypi.org/p/varformat
-    permissions:
-      id-token: write
-    steps:
-      - name: Restore distribution
-        uses: actions/download-artifact@v4
-        with:
-          name: package
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
