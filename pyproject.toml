@@ -46,7 +46,7 @@ addopts = [
     "--doctest-glob=README.md",
     "--ignore-glob=scripts"
 ]
-doctest_optionflags = "IGNORE_EXCEPTION_DETAIL"
+doctest_optionflags = "ELLIPSIS"
 
 [tool.black]
 line-length = 120

@@ -123,7 +123,7 @@ class AbstractFormatter(metaclass=ABCMeta):
         >>> format("Where is ${Kevin}?")
         Traceback (most recent call last):
             ...
-        KeyError: Kevin
+        KeyError: 'Kevin'
 
         ```
         """
@@ -157,6 +157,7 @@ class AbstractFormatter(metaclass=ABCMeta):
         Traceback (most recent call last):
             ...
         ValueError: unused arguments: extra
+
         ```
         """
         references = self._references(fmtstring)
@@ -211,8 +212,8 @@ class AbstractFormatter(metaclass=ABCMeta):
         >>> parse("Model-${X}-${Y}", "Model-X1-155-91")
         Traceback (most recent call last):
             ...
-        AmbiguityError: parsing is ambiguous:
-        could be: {'X': 'X1-155', 'Y': '91'}
+        varformat.AmbiguityError: parsing is ambiguous:
+          could be: {'X': 'X1-155', 'Y': '91'}
                 or: {'X': 'X1', 'Y': '155-91'}
         >>> parse("Model-${X}-${Y}", "Model-X1-155-91", ambiguity_check=False)
         {'X': 'X1-155', 'Y': '91'}
