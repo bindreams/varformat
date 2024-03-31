@@ -1,6 +1,8 @@
 # See also:
 #   https://github.com/pypa/gh-action-pypi-publish
 #   https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/
+name: Publish release
+
 on:
   release:
     types: [published]
