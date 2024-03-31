@@ -2,17 +2,17 @@
 Varformat can format and un-format (parse) strings containing various styles of variables.
 ```python
 >>> import varformat as vf
->>> vf.format("Hi ${name}!", name="mom")
+>>> vf.format('Hi ${name}!', name='mom')
 'Hi mom!'
->>> vf.parse("archive-${date}.tar.gz", "archive-1970-01-01.tar.gz")
+>>> vf.parse('archive-${date}.tar.gz', 'archive-1970-01-01.tar.gz')
 {'date': '1970-01-01'}
 
 >>> from varformat.formats import python
->>> python.format("Classic {style}", style="python braces")
+>>> python.format('Classic {style}', style='python braces')
 'Classic python braces'
 
 >>> from varformat.formats import posix_shell as sh
->>> sh.format("POSIX compliant $style", style="dollar variables")
+>>> sh.format('POSIX compliant $style', style='dollar variables')
 'POSIX compliant dollar variables'
 
 ```
@@ -26,7 +26,7 @@ pip install varformat
 When installed, the modules `varformat` and `varformat.formats` will be available. Global functions `format`, `vformat`, and `parse` represent the default formmatter with a `${}` style:
 ```python
 >>> import varformat as vf
->>> vf.format("my name ${name}", name="jeff")
+>>> vf.format('my name ${name}', name='jeff')
 'my name jeff'
 
 ```
@@ -34,8 +34,8 @@ When installed, the modules `varformat` and `varformat.formats` will be availabl
 If it is necessary to specify keys which are not valid python identifiers, such as numbers or string with spaces, you can use `vformat` instead:
 ```python
 >>> import varformat as vf
->>> vf.vformat("My three favorite foods: ${1}, ${2}, and ${1} again",
-...     {"1": "pizza", "2": "chocolate"})
+>>> vf.vformat('My three favorite foods: ${1}, ${2}, and ${1} again',
+...     {'1': 'pizza', '2': 'chocolate'})
 'My three favorite foods: pizza, chocolate, and pizza again'
 
 ```
@@ -43,7 +43,7 @@ If it is necessary to specify keys which are not valid python identifiers, such 
 `vformat` also supports keyword arguments to customize formatting behavior. `partial_ok` (default `False`) and `extra_ok` (default: `True`) control whether it is allowed to provide less (or more) arguments than the format string requires. `ambiguity_check` (default: `False`) will raise an error if your resulting string will be ambiguous:
 ```python
 >>> import varformat as vf
->>> vf.vformat("package-${os}-${arch}", {"os": "ubuntu-22.04", "arch": "amd64"}, ambiguity_check=True)
+>>> vf.vformat('package-${os}-${arch}', {'os': 'ubuntu-22.04', 'arch': 'amd64'}, ambiguity_check=True)
 Traceback (most recent call last):
 ...
 varformat.AmbiguityError: refusing to format because parsing would be ambiguous:
@@ -55,7 +55,7 @@ varformat.AmbiguityError: refusing to format because parsing would be ambiguous:
 The `parse` function, which performs the inverse of `vformat`, also supports `ambiguity_check` (default: `True`):
 ```python
 >>> import varformat as vf
->>> vf.parse("package-${os}-${arch}", "package-ubuntu-22.04-amd64")
+>>> vf.parse('package-${os}-${arch}', 'package-ubuntu-22.04-amd64')
 Traceback (most recent call last):
     ...
 varformat.AmbiguityError: parsing is ambiguous:
