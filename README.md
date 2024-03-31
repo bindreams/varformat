@@ -45,7 +45,7 @@ If it is necessary to specify keys which are not valid python identifiers, such 
 >>> import varformat as vf
 >>> vf.vformat('package-${os}-${arch}', {'os': 'ubuntu-22.04', 'arch': 'amd64'}, ambiguity_check=True)
 Traceback (most recent call last):
-...
+    ...
 varformat.AmbiguityError: refusing to format because parsing would be ambiguous:
   could be: {'os': 'ubuntu-22.04', 'arch': 'amd64'}
         or: {'os': 'ubuntu', 'arch': '22.04-amd64'}
